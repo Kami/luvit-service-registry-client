@@ -1,3 +1,6 @@
 [submodule "modules/keystone_client"]
 	path = modules/keystone_client
 	url = https://github.com/racker/luvit-keystone-client
+[submodule "modules/async"]
+	path = modules/async
+	url = https://github.com/racker/luvit-async
