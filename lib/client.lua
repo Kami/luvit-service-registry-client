@@ -16,9 +16,11 @@ limitations under the License.
 
 local string = require('string')
 local table = require('table')
+local JSON = require('json')
 local Object = require('core').Object
 
 local BaseClient = require('./base').BaseClient
+local HeartBeater = require('./heartbeater').HeartBeater
 
 local SessionsClient = BaseClient:extend()
 local ServicesClient = BaseClient:extend()
@@ -44,7 +46,7 @@ function SessionsClient:createSession(heartbeatTimeout, payload, callback)
   payload['heartbeat_timeout'] = heartbeatTimeout
 
   self:_create('/sessions', payload, {}, function(err, res)
-    local splitUrl, sessionId
+    local splitUrl, sessionId, hb, initialToken
 
     if err then
       callback(err)
@@ -53,7 +55,14 @@ function SessionsClient:createSession(heartbeatTimeout, payload, callback)
 
     splitUrl = split(res.headers['location'], '[^/]+')
     sessionId = splitUrl[#splitUrl]
-    callback(nil, sessionId)
+
+    initialToken = JSON.parse(res.body).token
+
+    hb = HeartBeater:new(self._username, self._apiKey, self._region,
+                         self._options, sessionId, initialToken,
+                         heartbeatTimeout)
+
+    callback(nil, sessionId, res, hb)
   end)
 end
 

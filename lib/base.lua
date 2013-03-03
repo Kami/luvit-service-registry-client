@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 --]]
 
-local Object = require('core').Object
+local Emitter = require('core').Emitter
 local JSON = require('json')
 local querystring = require('querystring')
 local https = require('https')
@@ -23,7 +23,7 @@ local url = require('url')
 local async = require('async')
 local KeystoneClient = require('keystone_client').Client
 
-local BaseClient = Object:extend()
+local BaseClient = Emitter:extend()
 
 local ENDPOINT_URL = 'https://dfw.registry.api.rackspacecloud.com/v1.0'
 local AUTH_URL = 'https://identity.api.rackspacecloud.com/v2.0'
