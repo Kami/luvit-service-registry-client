@@ -50,7 +50,7 @@ function HeartBeater:stop()
   self._stopped = true
 
   if self._timeoutId then
-    timer.clearTimeout(self._timeoutId)
+    timer.clearTimer(self._timeoutId)
     self._timeoutId = nil
   end
 end
