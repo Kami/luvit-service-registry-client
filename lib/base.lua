@@ -42,16 +42,18 @@ function BaseClient:initialize(username, apiKey, region, options)
 end
 
 function BaseClient:_request(path, method, payload, options, callback)
+  options = options and options or {}
+
   async.waterfall({
     function(callback)
       self._keystoneClient:tenantIdAndToken(callback)
     end,
 
     function(result, callback)
-      local baseUrl, defaultHeaders, reqOptions
+      local reqUrl, headers, reqOptions
 
-      baseUrl = self._url .. '/' .. result.tenantId .. path
-      defaultHeaders = {
+      reqUrl = self._url .. '/' .. result.tenantId .. path
+      headers = {
         ['X-Auth-Token'] = result.token,
         ['User-Agent'] = 'luvit-service-registry-client',
         ['Content-Type'] = 'application/json'
@@ -59,41 +61,33 @@ function BaseClient:_request(path, method, payload, options, callback)
 
       if payload then
         payload = JSON.stringify(payload)
-        defaultHeaders['Content-Length'] = #payload
+        headers['Content-Length'] = #payload
       end
 
       qs = querystring.urlencode(qs)
 
       if qs then
-        path = path .. '?' .. qs
+        reqUrl = reqUrl .. '?' .. qs
       end
 
-      -- TODO: Refactor
-      parsed = url.parse(baseUrl)
-      reqOptions = {
-        host = parsed.hostname,
-        port = tonumber(parsed.port),
-        path = parsed.pathname,
-        headers = defaultHeaders,
-        method = method
-      }
+      self:_performRequest(reqUrl, method, headers, payload, {}, function(err, res)
+        local parsed
 
-      client = https.request(reqOptions, function(res)
-        local data = ''
-        res:on('data', function(chunk)
-          data = data .. chunk
-        end)
+        if err then
+          callback(err)
+          return
+        end
 
-        res:on('end', function()
-          res.body = data
-          callback(nil, res)
-        end)
+        if options.expectedStatusCode and (res.statusCode ~= options.expectedStatusCode) then
+          parsed = JSON.parse(res.body)
+          err = {['type'] = parsed['type'], ['message'] = parsed['message'],
+                 ['details'] = parsed['details'], ['txnId'] = parsed['txnId'],
+                 ['code'] = parsed['code']}
+        end
+
+        callback(err, res)
       end)
-
-      client:on('error', callback)
-      client:done(payload)
-    end
-    },
+    end},
 
     function(err, result)
       callback(err, result)
@@ -102,6 +96,42 @@ end
 
 function BaseClient:_create(path, payload, options, callback)
   self:_request(path, 'POST', payload, options, callback)
+end
+
+function BaseClient:_performRequest(reqUrl, method, headers, payload, options, callback)
+  local parsed, reqOptions, reqPath
+
+  parsed = url.parse(reqUrl)
+
+  reqPath = parsed.pathname
+
+  if parsed.search then
+    reqPath = reqPath .. parsed.search
+  end
+
+  reqOptions = {
+    host = parsed.hostname,
+    port = tonumber(parsed.port),
+    path = reqPath,
+    headers = headers,
+    method = method
+  }
+
+  client = https.request(reqOptions, function(res)
+    local data = ''
+
+    res:on('data', function(chunk)
+      data = data .. chunk
+    end)
+
+    res:on('end', function()
+      res.body = data
+      callback(nil, res)
+    end)
+  end)
+
+  client:on('error', callback)
+  client:done(payload)
 end
 
 local exports = {}

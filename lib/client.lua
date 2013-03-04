@@ -45,7 +45,7 @@ function SessionsClient:createSession(heartbeatTimeout, payload, callback)
   payload = payload and payload or {}
   payload['heartbeat_timeout'] = heartbeatTimeout
 
-  self:_create('/sessions', payload, {}, function(err, res)
+  self:_create('/sessions', payload, {['expectedStatusCode'] = 201}, function(err, res)
     local splitUrl, sessionId, hb, initialToken
 
     if err then
@@ -75,7 +75,7 @@ function ServicesClient:createService(sessionId, serviceId, payload, callback)
   payload['id'] = serviceId
   payload['session_id'] = sessionId
 
-  self:_create('/services', payload, {}, callback)
+  self:_create('/services', payload, {['expectedStatusCode'] = 201}, callback)
 end
 
 function Client:initialize(username, apiKey, region, options)
