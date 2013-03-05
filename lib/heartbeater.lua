@@ -24,11 +24,15 @@ local BaseClient = require('./base').BaseClient
 
 local HeartBeater = BaseClient:extend()
 
+-- How many seconds to substract from the actual heartbeat interval to account
+-- for latency at different layers
+local INTERVAL_PROACTIVE_SECONDS = 3
+
 function HeartBeater:initialize(username, apiKey, region, options, sessionId, initialToken, timeout)
   BaseClient.initialize(self, username, apiKey, region, options)
 
   self._sessionId = sessionId
-  self._heartbeatTimeout = timeout;
+  self._heartbeatTimeout = timeout
 
   self._timeoutId = nil
   self._nextToken = initialToken
@@ -65,13 +69,13 @@ function HeartBeater:_startHeartbeating()
     return
   end
 
-  interval = self._heartbeatInterval - 3
+  interval = (self._heartbeatInterval - INTERVAL_PROACTIVE_SECONDS)
 
   if interval <= 0 then
-    interval = interval + 3
+    interval = (interval + INTERVAL_PROACTIVE_SECONDS)
   end
 
-  interval = interval * 1000
+  interval = (interval * 1000)
 
   self:_request(path, 'POST', payload, {['expectedStatusCode'] = 200}, function(err, res)
     if err then
