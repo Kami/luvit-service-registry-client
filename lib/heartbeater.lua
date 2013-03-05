@@ -73,9 +73,16 @@ function HeartBeater:_startHeartbeating()
 
   interval = interval * 1000
 
-  self:_request(path, 'POST', payload, {}, function(err, res)
+  self:_request(path, 'POST', payload, {['expectedStatusCode'] = 200}, function(err, res)
     if err then
-      self:emit('error', err)
+      if err.code and err.code ~= 404 then
+        -- Non 404 error, immediately re-try heartbeating with the same token
+        self._timeoutId = timer.setTimeout(10, bind(self._startHeartbeating, self))
+      else
+        self:emit('error', err)
+      end
+
+      return
     end
 
     self._nextToken = JSON.parse(res.body).token
